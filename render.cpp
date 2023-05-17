@@ -139,6 +139,7 @@ draw(scene &sc, drawContext &dc)
 
 #ifdef DEBUG
         int c = wh == WH_VERTICAL ? 0x00 : 0xFF;
+        // Normalization factor to rdirx and rdiry is included in perpDist!
         mm.drawLine(p.x, p.y, 
                     p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
                     c, 0xFF, 0xFF, m, dc); 
