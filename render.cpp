@@ -106,7 +106,7 @@ draw(scene &sc, drawContext &dc)
               && curmaxgridl < maxgridl);
 
         float perpDist = 0;
-        SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 128); 
+
         switch(wh) {
             case(WH_HORIZONTAL): {
 #ifdef FAST_DDA
