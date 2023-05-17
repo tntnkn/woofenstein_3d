@@ -113,35 +113,36 @@ draw(scene &sc, drawContext &dc)
             case(WH_HORIZONTAL): {
 #ifdef FAST_DDA
                 perpDist = rdirly - rytl_ratio;
-                float rdirl = 1;
 #else
-                float d = dot(pdirx, pdiry, rdirx, rdiry); 
-                perpDist = std::abs( (d/(pdirl*rdirl)) * (rdirly - rytl_ratio));
-#endif
-#ifdef DEBUG
-                mm.drawLine(p.x, p.y, 
-                            p.x+rdirx/rdirl*(rdirly-rytl_ratio), p.y+rdiry/rdirl*(rdirly-rytl_ratio), 
-                            0x00, 0xFF, 0xFF, m, dc); 
+                //float d = dot(pdirx, pdiry, rdirx, rdiry); 
+                //perpDist = std::abs( (d/(pdirl*rdirl)) * (rdirly - rytl_ratio));
+                // cos(rdir, pdir)*rdirl == 1! rdir always projects at pdir
+                // as it is computed using it and it's perp.
+                perpDist = (rdirly - rytl_ratio) / rdirl;
 #endif
             } break;
             case(WH_VERTICAL): {
 #ifdef FAST_DDA
                 perpDist = rdirlx - rxtl_ratio;
-                float rdirl = 1;
 #else
-                float d = dot(pdirx, pdiry, rdirx, rdiry); 
-                perpDist = std::abs( (d/(pdirl*rdirl)) * (rdirlx - rxtl_ratio));
-#endif
-#ifdef DEBUG
-                mm.drawLine(p.x, p.y, 
-                            p.x+rdirx/rdirl*(rdirlx-rxtl_ratio), p.y+rdiry/rdirl*(rdirlx-rxtl_ratio), 
-                            0xFF, 0xFF, 0xFF, m, dc); 
+                //float d = dot(pdirx, pdiry, rdirx, rdiry); 
+                //perpDist = std::abs( (d/(pdirl*rdirl)) * (rdirlx - rxtl_ratio));
+                // cos(rdir, pdir)*rdirl == 1! rdir always projects at pdir
+                // as it is computed using it and it's perp.
+                perpDist = (rdirlx - rxtl_ratio) / rdirl;
 #endif
             } break;
             case(WH_NONE):
             default:
                 break;
         };
+
+#ifdef DEBUG
+        int c = wh == WH_VERTICAL ? 0x00 : 0xFF;
+        mm.drawLine(p.x, p.y, 
+                    p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
+                    c, 0xFF, 0xFF, m, dc); 
+#endif
 
         int line_h = dc.SCREEN_HEIGHT / perpDist;
         int line_b = dc.SCREEN_HEIGHT/2 - line_h/2;
