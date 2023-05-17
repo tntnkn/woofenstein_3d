@@ -74,22 +74,20 @@ draw(scene &sc, drawContext &dc)
 
         int maxgridl = 100;
         int curmaxgridl = 0;
-        float offx = 0;
-        float offy = 0;
         // Calculate initial conditions.
         if(rdirx < 0) {
             gridstepx = -1;
-            offx = rdirlx = (p.x - gridx) * rxtl_ratio;
+            rdirlx = (p.x - gridx) * rxtl_ratio;
         } else {
             gridstepx =  1;
-            offx = rdirlx = ((gridx+1.0) - p.x) * rxtl_ratio;
+            rdirlx = ((gridx+1.0) - p.x) * rxtl_ratio;
         }
         if(rdiry < 0) {
             gridstepy = -1;
-            offy = rdirly = (p.y - gridy) * rytl_ratio;
+            rdirly = (p.y - gridy) * rytl_ratio;
         } else {
             gridstepy =  1;
-            offy = rdirly = ((gridy+1.0) - p.y) * rytl_ratio;
+            rdirly = ((gridy+1.0) - p.y) * rytl_ratio;
         }
 
         do {
