@@ -44,12 +44,14 @@ class miniMap {
                         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, m_alpha); 
                         break;
                     }
+                                 /*
                     case(WALL): {
-                        SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0xFF, m_alpha); 
+                        SDL_SetRenderDrawColor(rend, 0xFF, 0xF2, 0x00, m_alpha); 
                         break;
                     }
+                                */
                     default: {
-                        SDL_SetRenderDrawColor(rend, 0xFF, 0xF2, 0x00, m_alpha); 
+                        SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0xFF, m_alpha); 
                         break;
                     }
                 }

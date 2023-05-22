@@ -26,8 +26,11 @@ struct boundBox {
 
 enum TILE : char {
     OUT_OF_BOUNDS = -1,
-    WALL  = '1',
-    FLOOR = '0',
+    WALL_FIRST    = '1',
+    WALL2         = '2',
+    WALL3         = '3',
+    WALL_LAST     = '4',
+    FLOOR         = '0',
 };
 
 class Map {
@@ -37,7 +40,7 @@ class Map {
     Map() {};
     Map(const char *path) { load(path); };
 
-    int load( const char *path) {
+    int load(const char *path) {
         std::ifstream f_map(path);
         if( !f_map.good() ) {
             std::cout << "Cannot open map in " << path << std::endl;
@@ -71,6 +74,20 @@ class Map {
             return OUT_OF_BOUNDS;
         return _getTile(x, y);
     };
+
+    template<typename T>
+    char getWallOrder(T x, T y) const {
+        char t = getTile(x, y);
+        if(t == OUT_OF_BOUNDS)
+            return t;
+        return t - WALL_FIRST;
+    }
+
+    template<typename T>
+    bool isWall(T x, T y) const {
+        char t = getTile(x, y);
+        return ( t >= WALL_FIRST && t <= WALL_LAST );
+    }
 
     bool isWithin(boundBox &bbx) const {
         boundBox nbbx = bbx; 

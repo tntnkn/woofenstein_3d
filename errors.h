@@ -6,6 +6,7 @@ using err_code = int;
 enum ERRORS : err_code {
     NO_ERROR,
     INIT_FAIL,
+    INIT_IMAGE_FAIL,
     WIN_CREATE_FAIL,
     RENDERER_CREATE_FAIL,
     EXIT_HANDLER_REG_FAIL,
@@ -13,6 +14,10 @@ enum ERRORS : err_code {
     MAP_NOT_LOADED,
     MAP_FILE_NOT_OPENED,
     MAP_WRONG_DIMENSIONS,
+
+    TILEMAP_NOT_LOADED,
+    TILEMAP_WRONG_PIXEL_SIZE,
+    TILEMAP_NO_PIXELS_GOT,
 };
 
 

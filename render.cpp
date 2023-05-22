@@ -1,9 +1,13 @@
 #include <SDL2/SDL.h>
+#include <cstdint>
+#include <cstdlib>
 
 #include "render.h"
 #include "things.h"
 #include "miniMap.h"
 #include "linal.h"
+
+#include <cassert>
 
 
 enum WALL_HIT {
@@ -11,7 +15,7 @@ enum WALL_HIT {
 };
 
 void
-draw(scene &sc, drawContext &dc)
+draw(scene &sc, drawContext &dc, tileMap &tm)
 {
     Player &p = sc.p;
     Map &m = sc.m;
@@ -102,10 +106,10 @@ draw(scene &sc, drawContext &dc)
                 wh = WH_HORIZONTAL;
                 curmaxgridl = std::abs(gridy-p.y);
             }
-        } while (m.getTile(gridx, gridy) != WALL
-              && curmaxgridl < maxgridl);
+        } while (!m.isWall(gridx, gridy) && curmaxgridl < maxgridl);
 
         float perpDist = 0;
+        float whc_n = 0; //wall hit coordinate normalized
 
         switch(wh) {
             case(WH_HORIZONTAL): {
@@ -118,6 +122,7 @@ draw(scene &sc, drawContext &dc)
                 // as it is computed using it and it's perp.
                 perpDist = (rdirly - rytl_ratio) / rdirl;
 #endif
+                whc_n = p.x + rdirx * perpDist;
             } break;
             case(WH_VERTICAL): {
 #ifdef FAST_DDA
@@ -129,11 +134,13 @@ draw(scene &sc, drawContext &dc)
                 // as it is computed using it and it's perp.
                 perpDist = (rdirlx - rxtl_ratio) / rdirl;
 #endif
+                whc_n = p.y + rdiry * perpDist;
             } break;
             case(WH_NONE):
             default:
                 break;
         };
+        whc_n -= std::floor(whc_n); //TODO test just casting into int
 
 #ifdef DEBUG
         int c = wh == WH_VERTICAL ? 0x00 : 0xFF;
@@ -144,12 +151,59 @@ draw(scene &sc, drawContext &dc)
 #endif
 
         int line_h = dc.SCREEN_HEIGHT / perpDist;
+        //if(perpDist < 1.0)
+            //std::cout << perpDist << std::endl;
         int line_b = dc.SCREEN_HEIGHT/2 - line_h/2;
-        if(line_b < 0) line_b = 0;
+        /* The problem -- when perpDist < 1 the line_h > SCREEN_HEIGHT.
+         * So resulting line_b and line_t may be beyond screen.
+         * If they are clamped now, then textures will be clamped too,
+         * resulting in artifacts when standing close to walls.
+         * Better to leave it like this and handle corner cases later. */
+        //if(line_b < 0) line_b = 0;
         int line_t = dc.SCREEN_HEIGHT/2 + line_h/2;
-        if(line_t >= dc.SCREEN_HEIGHT) line_t = dc.SCREEN_HEIGHT-1;
+        //if(line_t >= dc.SCREEN_HEIGHT) line_t = dc.SCREEN_HEIGHT-1;
 
-        SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 128); 
+#ifndef NO_RENDER_TEX
+        int tx = 0;
+        int ty = 0;
+        int tw = 64;
+        int th = 64;
+        int wall_t = m.getWallOrder(gridx, gridy);
+        int mask = th - 1;
+
+        tx = (whc_n * (float)tw);
+        // In below cases ray approaches tile from its top.
+        if(wh == WH_VERTICAL   && rdirx > 0) tx = tw-1-tx;
+        else
+        if(wh == WH_HORIZONTAL && rdiry < 0) tx = tw-1-tx;;
+       
+        /* It uses the abridged version of Bresenham's integer line algorithm.
+         * I presume here that th will never be >= line_h. */
+       
+        int m = th; // rise / run * run, see below
+        int y_inc = m >= 0 ? 1 : -1;
+        int accum = 0;
+        int d = std::abs(m) * 2;         //slope * 2 * run
+        int threshold = line_h;          //0.5   * 2 * run
+        int thres_inc = 2 * line_h;      //1.0   * 2 * run
+
+        struct colorRBG rgb;
+        for(int y = line_b; y < line_t; ++y) {
+            //uint32_t c = textures[wall_t][tw * ty + tx];
+            rgb = tm.getColorRGB(wall_t, tx, ty);
+            SDL_SetRenderDrawColor(
+                rend, rgb.r, rgb.g, rgb.b, 255); 
+            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y);
+            accum += d;
+            if(accum >= threshold) {
+                ty += y_inc;
+                ty &= mask;
+                threshold += thres_inc;
+            }
+        }
+#else
+        SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 255); 
         SDL_RenderDrawLine(rend, dc.SCREEN_WIDTH-i, line_b, dc.SCREEN_WIDTH-i, line_t);
+#endif
     }
 }

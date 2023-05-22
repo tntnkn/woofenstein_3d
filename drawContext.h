@@ -23,7 +23,6 @@ class drawContext {
                         SDL_Window, 
                         std::function<void(SDL_Window *)>
                        > m_window {nullptr, SDL_DestroyWindow};
-        //std::unique_ptr<SDL_Surface> m_screen {nullptr};
         std::unique_ptr<
                         SDL_Renderer,
                         std::function<void(SDL_Renderer *)>
@@ -63,12 +62,6 @@ class drawContext {
                 return RENDERER_CREATE_FAIL;
             }
             m_renderer.reset(renderer);
-            /*
-            m_screen.reset( SDL_GetWindowSurface(WINDOW) );
-            SDL_FillRect(m_screen.get(), 
-                         NULL, 
-                         SDL_MapRGB(m_screen->format, 0xFF, 0xFF, 0xFF));
-            */
 
             return NO_ERROR;
         };

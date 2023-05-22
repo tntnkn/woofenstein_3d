@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <cstddef>
 
 #include "initSDL.h"
 #include "render.h"
@@ -6,6 +7,7 @@
 #include "things.h"
 #include "miniMap.h"
 #include "scene.h"
+#include "tileMap.h"
 #include "errors.h"
 
 
@@ -20,12 +22,14 @@ main(int argc, char **argv)
     if ( !dc.isValid() )
         std::exit(dc.m_error);
 
-    SDL_Event e; 
-    bool canRun = true; 
-
     Map map("./map.txt");
     if( !map.isLoaded() )
         std::exit(MAP_NOT_LOADED);
+
+    tileMap tm;
+    tm.load("./assets/textures/pack2.png");
+    if( !tm.isLoaded() )
+        std::exit(TILEMAP_NOT_LOADED);
 
     Player player(1.5, 1.5);
 
@@ -34,7 +38,10 @@ main(int argc, char **argv)
     scene sc {
         map, player, mm,
     };
-    do {
+
+    SDL_Event e; 
+    bool canRun = true; 
+    while(canRun) {
         while( SDL_PollEvent(&e) ) {
             if(e.type == SDL_QUIT) {
                 canRun = false;
@@ -44,10 +51,10 @@ main(int argc, char **argv)
             }
         }
         dc.clear();
-        draw(sc, dc);
+        draw(sc, dc, tm);
         mm.draw(map, player, dc);
         dc.update();
-    } while(canRun);
+    }
 
     std::exit(EXIT_SUCCESS);
 }
