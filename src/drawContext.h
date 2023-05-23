@@ -45,11 +45,15 @@ class drawContext {
                                       SCREEN_HEIGHT,
                                       SDL_WINDOW_SHOWN);
             if(!window) {
+#ifdef DEBUG
                 std::cout << "Coundn't create window with error " << SDL_GetError() << "\n"; 
+#endif
                 m_error = WIN_CREATE_FAIL;
                 return WIN_CREATE_FAIL;
             }
+#ifdef DEBUG
             std::cout << "SDL window created successfully.\n"; 
+#endif
             m_window.reset(window);
 
             SDL_Renderer *renderer = SDL_CreateRenderer(
@@ -57,7 +61,9 @@ class drawContext {
                                       -1,
                                       SDL_RENDERER_ACCELERATED);
             if(!renderer) {
+#ifdef DEBUG
                 std::cout << "Couldn't create renderer with error " << SDL_GetError() << "\n"; 
+#endif
                 m_error = RENDERER_CREATE_FAIL;
                 return RENDERER_CREATE_FAIL;
             }

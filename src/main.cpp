@@ -11,6 +11,10 @@
 #include "errors.h"
 
 
+#ifndef ASSETS_PATH
+#define ASSETS "."
+#endif
+
 int 
 main(int argc, char **argv)
 {
@@ -22,12 +26,12 @@ main(int argc, char **argv)
     if ( !dc.isValid() )
         std::exit(dc.m_error);
 
-    Map map("./map.txt");
+    Map map(ASSETS_PATH"/maps/map.txt");
     if( !map.isLoaded() )
         std::exit(MAP_NOT_LOADED);
 
     tileMap tm;
-    tm.load("./assets/textures/pack2.png");
+    tm.load(ASSETS_PATH"/textures/pack2.png");
     if( !tm.isLoaded() )
         std::exit(TILEMAP_NOT_LOADED);
 

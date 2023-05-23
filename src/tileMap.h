@@ -36,22 +36,28 @@ class tileMap {
     err_code load(const char *path) {
         TILEMAP_PTR tm { IMG_Load(path), SDL_FreeSurface };
         if(NULL == tm) {
+#ifdef DEBUG
             std::cout << "Error loading " << path 
                       << " with error "   << IMG_GetError() << std::endl;
+#endif
             return TILEMAP_NOT_LOADED;
         }
         if(tm->format->BytesPerPixel != 4) {
             // Maybe will play with it later.
+#ifdef DEBUG
             std::cout << "Wrong pixel size of tile map " << path << ". "
                       << tm->format->BytesPerPixel << ", but 4 expected." 
                       << std::endl;
+#endif
             return TILEMAP_WRONG_PIXEL_SIZE;
         }
 
         uint32_t *p = __extractPixels( tm.get() );
         if(!p) {
+#ifdef DEBUG
             std::cout << "Cannot get pixels from tilemap " << path << "."
                       << std::endl;
+#endif
             return TILEMAP_NO_PIXELS_GOT;
         }
 
@@ -78,8 +84,10 @@ class tileMap {
 
     uint32_t getColor(int t_no, int x, int y) {
         if(t_no >= m_no_textures || x >= m_tw || y >= m_th) {
+#ifdef DEBUG
             std::cout << "Addressing tilemap with wrong texture dimensions!"
                       << t_no << " " << x << " " << y << std::endl;
+#endif
             return 0;
         }
         return m_pixels[ m_td*t_no + (m_tw*y+x) ];

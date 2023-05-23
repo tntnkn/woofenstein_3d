@@ -43,7 +43,9 @@ class Map {
     int load(const char *path) {
         std::ifstream f_map(path);
         if( !f_map.good() ) {
+#ifdef DEBUG
             std::cout << "Cannot open map in " << path << std::endl;
+#endif
             return MAP_FILE_NOT_OPENED;
         }
         int map_w, map_h;
@@ -57,7 +59,9 @@ class Map {
         }
 
         if(i != wh) {
+#ifdef DEBUG
             std::cout << "Wrong dimensions of map " << path << std::endl;
+#endif
             return MAP_WRONG_DIMENSIONS;
         }
         repr.reset(r); 
@@ -139,19 +143,25 @@ class Map {
     };
 
     bool _canMoveTo(float x, float y, boundBox &bbx) const {
+#ifdef DEBUG
         std::cout << "testing coordinates " << x << " " << y << std::endl;
+#endif
         //adjustXY(&x, &y);
         if( !_isWithin(bbx) )
             return false;
+#ifdef DEBUG
         std::cout << bbx.tlx << " " << bbx.tly << " "
                   << bbx.brx << " " << bbx.bry << std::endl;
+#endif
         if( _getTile(bbx.brx, bbx.bry) != FLOOR
          || _getTile(bbx.brx, bbx.tly) != FLOOR
          || _getTile(bbx.tlx, bbx.bry) != FLOOR
          || _getTile(bbx.tlx, bbx.tly) != FLOOR
         )
             return false;
+#ifdef DEBUG
         std::cout << "can move to " << x << " " << y << std::endl;
+#endif
         return true;
     };
     
