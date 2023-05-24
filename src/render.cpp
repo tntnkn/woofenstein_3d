@@ -150,18 +150,15 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
                     c, 0xFF, 0xFF, m, dc); 
 #endif
 
+        /* The problem of perpDist being < 1 and the line_h > SCREEN_HEIGHT
+         * is handled further below. */
         int line_h = dc.SCREEN_HEIGHT / perpDist;
-        //if(perpDist < 1.0)
-            //std::cout << perpDist << std::endl;
         int line_b = dc.SCREEN_HEIGHT/2 - line_h/2;
-        /* The problem -- when perpDist < 1 the line_h > SCREEN_HEIGHT.
-         * So resulting line_b and line_t may be beyond screen.
-         * If they are clamped now, then textures will be clamped too,
-         * resulting in artifacts when standing close to walls.
-         * Better to leave it like this and handle corner cases later. */
-        //if(line_b < 0) line_b = 0;
         int line_t = dc.SCREEN_HEIGHT/2 + line_h/2;
-        //if(line_t >= dc.SCREEN_HEIGHT) line_t = dc.SCREEN_HEIGHT-1;
+#ifdef DEBUG
+        if(perpDist < 1.0)
+            std::cout << "perpDist < 1.0 " << perpDist << std::endl;
+#endif
 
 #ifndef NO_RENDER_TEX
         int tx = 0;
@@ -187,8 +184,24 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         int threshold = line_h;          //0.5   * 2 * run
         int thres_inc = 2 * line_h;      //1.0   * 2 * run
 
+        int line_start = line_b;
+        int line_end   = line_t;
+        if(line_start < 0) { 
+            for(int i = 0; i < std::abs(line_start); ++i) {
+                accum += d;
+                if(accum >= threshold) {
+                    ty += y_inc;
+                    ty &= mask;
+                    threshold += thres_inc;
+                }
+            }
+            line_start = 0;
+        } 
+        if(line_end >= dc.SCREEN_HEIGHT) {
+            line_end = dc.SCREEN_HEIGHT-1;
+        }
         struct colorRBG rgb;
-        for(int y = line_b; y < line_t; ++y) {
+        for(int y = line_start; y < line_end; ++y) {
             //uint32_t c = textures[wall_t][tw * ty + tx];
             rgb = tm.getColorRGB(wall_t, tx, ty);
             SDL_SetRenderDrawColor(
