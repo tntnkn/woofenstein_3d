@@ -6,6 +6,7 @@
 #include "things.h"
 #include "miniMap.h"
 #include "linal.h"
+#include "tileMap.h"
 
 #include <cassert>
 
@@ -17,11 +18,11 @@ enum WALL_HIT {
 void
 draw(scene &sc, drawContext &dc, tileMap &tm)
 {
-    Player &p = sc.p;
-    Map &m = sc.m;
+    Player  &p  = sc.p;
+    Map     &map= sc.m;
     miniMap &mm = sc.mm;
 
-    float fov = 1.15192; // 66 degrees
+    float fov       = 1.15192; // 66 degrees
     float h_fov_tan = tan(fov/2);
 #ifdef FAST_DDA
     // pdirl should be 1 as computation of perpDist below relies on it.
@@ -38,10 +39,48 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
     SDL_Renderer *rend = dc.ren_ptr();
 
 #ifdef DEBUG
-    mm.drawLine(p.x, p.y, p.x+pdirx, p.y+pdiry, 0x00, 0xFF, 0x00, m, dc); 
-    mm.drawLine(p.x, p.y, p.x+cdirx, p.y+cdiry, 0xFF, 0x00, 0x00, m, dc); 
+    mm.drawLine(p.x, p.y, p.x+pdirx, p.y+pdiry, 0x00, 0xFF, 0x00, map, dc); 
+    mm.drawLine(p.x, p.y, p.x+cdirx, p.y+cdiry, 0xFF, 0x00, 0x00, map, dc); 
 #endif
 
+    /*
+    int tw = tm.m_tw;
+    int th = tm.m_th;
+    for(int y = 0; y < dc.SCREEN_HEIGHT/2; ++y) {
+        float rdirx0 = p.x - cdirx;
+        float rdiry0 = p.y - cdiry;
+        float rdirx1 = p.x + cdirx;
+        float rdiry1 = p.y + cdiry;
+
+        int smallZ = dc.SCREEN_HEIGHT/2 - y;
+        float bigZ   = 0.5 * dc.SCREEN_HEIGHT;
+
+        float row_dist = bigZ / smallZ;
+
+        float gridstepx = row_dist * (rdirx1-rdirx0) / dc.SCREEN_WIDTH;
+        float gridstepy = row_dist * (rdiry1-rdiry0) / dc.SCREEN_WIDTH;
+
+        float f_gridx = p.x + row_dist * rdirx0;
+        float f_gridy = p.y + row_dist * rdiry0;
+
+        for(int x = 0; x < dc.SCREEN_WIDTH; ++x) {
+            int i_gridx = f_gridx;
+            int i_gridy = f_gridy;
+            int tx = (int)(tw*(f_gridx-i_gridx)) & (tw-1); 
+            int ty = (int)(th*(f_gridy-i_gridy)) & (th-1); 
+
+            f_gridx += gridstepx;
+            f_gridy += gridstepy;
+            
+            struct colorRBG rgb = tm.getColorRGB(1, tx, ty);
+            SDL_SetRenderDrawColor(
+                rend, rgb.r, rgb.g, rgb.b, 255); 
+            SDL_RenderDrawPoint(rend, x, y);
+        }
+    }
+    */
+
+    // Walls
     for(int i = 0; i < dc.SCREEN_WIDTH; i++) {
         // Cofficient for camera vector, from -1 to 1.
         float cc = 2.0*(float)i/(float)dc.SCREEN_WIDTH - 1.0; 
@@ -106,7 +145,7 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
                 wh = WH_HORIZONTAL;
                 curmaxgridl = std::abs(gridy-p.y);
             }
-        } while (!m.isWall(gridx, gridy) && curmaxgridl < maxgridl);
+        } while (!map.isWall(gridx, gridy) && curmaxgridl < maxgridl);
 
         float perpDist = 0;
         float whc_n = 0; //wall hit coordinate normalized
@@ -147,7 +186,7 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         // Normalization factor to rdirx and rdiry is included in perpDist!
         mm.drawLine(p.x, p.y, 
                     p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
-                    c, 0xFF, 0xFF, m, dc); 
+                    c, 0xFF, 0xFF, map, dc); 
 #endif
 
         /* The problem of perpDist being < 1 and the line_h > SCREEN_HEIGHT
@@ -161,11 +200,12 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
 #endif
 
 #ifndef NO_RENDER_TEX
+
         int tx = 0;
         int ty = 0;
-        int tw = 64;
-        int th = 64;
-        int wall_t = m.getWallOrder(gridx, gridy);
+        int tw = tm.m_tw;
+        int th = tm.m_th;
+        int wall_t = map.getWallOrder(gridx, gridy);
         int mask = th - 1;
 
         tx = (whc_n * (float)tw);
@@ -214,6 +254,51 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
                 threshold += thres_inc;
             }
         }
+
+        /* Floor and ceiling. 
+         * At the same time as bigZ is in the middle of the screen and 
+         * they are symmetrical. */
+        float bigZ = (float)dc.SCREEN_HEIGHT / 2;
+        for(int y = 0; y < line_start; ++y) {
+            float smallZ  = bigZ - y;     
+
+#ifdef FAST_DDA
+            /* pdirl/row_dist = smallZ/bigZ */
+            // Here pdirl == 1 in every case.
+            float row_dist = bigZ/smallZ;  
+#else
+            /* pdirl is included as normalizing coefficient for rdirl that is 
+             * used later, not as a part of the ratio formula! */
+            float row_dist = bigZ/smallZ/pdirl; 
+#endif
+
+            /* Imagine a right triangle with pdir and rdir as sides. 
+             * Both hit the imaginary screen while rdir also goes though
+             * pixel being colored (well, its projection to the ground).
+             * If all the sides are multiplied by row_dist, then 
+             * the resulting triangle is similar to original one and 
+             * resulting ray is hitting the floor/wall in a correct sample spot 
+             */
+            float f_tilex = p.x + rdirx * row_dist;
+            float f_tiley = p.y + rdiry * row_dist; 
+
+            int tile_x = f_tilex;
+            int tile_y = f_tiley;
+            
+            int tx = (int)(tw * (f_tilex - tile_x) ) & (tw-1);
+            int ty = (int)(th * (f_tiley - tile_y) ) & (th-1); 
+
+            int floor_t = map.getWallOrder(tile_x, tile_y);
+            int ceil_t  = map.getWallOrder(tile_x, tile_y);
+
+            rgb = tm.getColorRGB(7, tx, ty);
+            SDL_SetRenderDrawColor(
+                rend, rgb.r, rgb.g, rgb.b, 255); 
+
+            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y);
+            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, y);
+        }
+
 #else
         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 255); 
         SDL_RenderDrawLine(rend, dc.SCREEN_WIDTH-i, line_b, dc.SCREEN_WIDTH-i, line_t);
