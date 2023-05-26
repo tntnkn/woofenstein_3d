@@ -34,7 +34,7 @@ class miniMap {
         int h = m.h, w = m.w;
         for(int i = 0; i < h; ++i) {
             for(int j = 0; j < w; ++j) {
-                char c = m.getTile(j, i);
+                char c = m.getCollision(j, i);
                 SDL_Renderer *rend = dc.ren_ptr();
                 SDL_Rect t = { 
                     j*m_scale, (h-i-1)*m_scale, m_scale, m_scale,
@@ -44,12 +44,10 @@ class miniMap {
                         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0x00, m_alpha); 
                         break;
                     }
-                                 /*
                     case(WALL): {
                         SDL_SetRenderDrawColor(rend, 0xFF, 0xF2, 0x00, m_alpha); 
                         break;
                     }
-                                */
                     default: {
                         SDL_SetRenderDrawColor(rend, 0xFF, 0xFF, 0xFF, m_alpha); 
                         break;
@@ -93,7 +91,7 @@ class miniMap {
     void drawLine(float x1, float y1, float x2, float y2, 
                   int R, int G, int B, Map &m, drawContext &dc) {
         SDL_Renderer *rend = dc.ren_ptr();
-        SDL_SetRenderDrawColor(rend, R, G, B, m_alpha); 
+        SDL_SetRenderDrawColor(rend, R, G, B, 255); 
         SDL_RenderDrawLine(rend, 
                            x1      *m_scale,
                            (m.h-y1)*m_scale,

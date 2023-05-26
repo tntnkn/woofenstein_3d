@@ -181,13 +181,6 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         };
         whc_n -= std::floor(whc_n); //TODO test just casting into int
 
-#ifdef DEBUG
-        int c = wh == WH_VERTICAL ? 0x00 : 0xFF;
-        // Normalization factor to rdirx and rdiry is included in perpDist!
-        mm.drawLine(p.x, p.y, 
-                    p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
-                    c, 0xFF, 0xFF, map, dc); 
-#endif
 
         /* The problem of perpDist being < 1 and the line_h > SCREEN_HEIGHT
          * is handled further below. */
@@ -205,7 +198,7 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         int ty = 0;
         int tw = tm.m_tw;
         int th = tm.m_th;
-        int wall_t = map.getWallOrder(gridx, gridy);
+        int wall_t = map.getWall(gridx, gridy);
         int mask = th - 1;
 
         tx = (whc_n * (float)tw);
@@ -242,7 +235,6 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         }
         struct colorRBG rgb;
         for(int y = line_start; y < line_end; ++y) {
-            //uint32_t c = textures[wall_t][tw * ty + tx];
             rgb = tm.getColorRGB(wall_t, tx, ty);
             SDL_SetRenderDrawColor(
                 rend, rgb.r, rgb.g, rgb.b, 255); 
@@ -288,20 +280,30 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
             int tx = (int)(tw * (f_tilex - tile_x) ) & (tw-1);
             int ty = (int)(th * (f_tiley - tile_y) ) & (th-1); 
 
-            int floor_t = map.getWallOrder(tile_x, tile_y);
-            int ceil_t  = map.getWallOrder(tile_x, tile_y);
-
-            rgb = tm.getColorRGB(7, tx, ty);
+            int floor_t = map.getFloor(tile_x, tile_y);
+            rgb = tm.getColorRGB(floor_t, tx, ty);
             SDL_SetRenderDrawColor(
                 rend, rgb.r, rgb.g, rgb.b, 255); 
-
             SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y);
+
+            int ceil_t  = map.getCeil(tile_x, tile_y);
+            rgb = tm.getColorRGB(ceil_t, tx, ty);
+            SDL_SetRenderDrawColor(
+                rend, rgb.r, rgb.g, rgb.b, 255); 
             SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, y);
         }
 
 #else
         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 255); 
         SDL_RenderDrawLine(rend, dc.SCREEN_WIDTH-i, line_b, dc.SCREEN_WIDTH-i, line_t);
+#endif
+
+#ifdef DEBUG
+        int mm_ray_r = wh == WH_VERTICAL ? 0x00 : 0xFF;
+        // Normalization factor to rdirx and rdiry is included in perpDist!
+        mm.drawLine(p.x, p.y, 
+                    p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
+                    mm_ray_r, 0xFF, 0xFF, map, dc); 
 #endif
     }
 }

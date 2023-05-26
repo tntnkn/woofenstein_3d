@@ -24,73 +24,96 @@ struct boundBox {
 };
 
 
-enum TILE : char {
+enum MAP_ERRORS : signed char {
     OUT_OF_BOUNDS = -1,
-    WALL_FIRST    = '1',
-    WALL2         = '2',
-    WALL3         = '3',
-    WALL_LAST     = '4',
-    FLOOR         = '0',
 };
 
+enum COLLISIONS : char {
+    FLOOR         = 0,
+    WALL          = 1,
+};
+
+
 class Map {
+    using REPR_PTR = std::unique_ptr<char[], void(*)(void*)>;
+
   public:
-    int w, h;
+    int w = 0; 
+    int h = 0;
 
     Map() {};
     Map(const char *path) { load(path); };
 
     int load(const char *path) {
-        std::ifstream f_map(path);
-        if( !f_map.good() ) {
-#ifdef DEBUG
-            std::cout << "Cannot open map in " << path << std::endl;
-#endif
-            return MAP_FILE_NOT_OPENED;
-        }
-        int map_w, map_h;
-        f_map >> map_w >> map_h;
-        int wh = map_w * map_h;
-        char *r = reinterpret_cast<char *>( calloc(wh+1, 1) );
-        int i = 0;
-        while( f_map && i < wh ) {
-            char c; f_map >> c;
-            r[i++] = c;
-        }
-
-        if(i != wh) {
-#ifdef DEBUG
-            std::cout << "Wrong dimensions of map " << path << std::endl;
-#endif
-            return MAP_WRONG_DIMENSIONS;
-        }
-        repr.reset(r); 
-        w = map_w; h = map_h;
-        return 0;
+        int ret = 0;
+        std::string str(path); 
+        if(ret = __load( m_walls, str + std::string("/walls.txt") ) )
+            return ret;
+        if(ret = __load( m_floor, str + std::string("/floor.txt") ) )
+            return ret;
+        if(ret = __load( m_ceil , str + std::string("/ceil.txt" ) ) )
+            return ret;
+        if(ret = __load( m_coll , str + std::string("/coll.txt" ) ) )
+            return ret;
+        //char *str = (char*)calloc( strlen(path) + 6, 1);
+        //strcpy(str, path);
+        /*
+        if(ret = __load( m_walls, strcat(str, "/walls.txt") ) )
+            return ret;
+        if(ret = __load( m_floor, strcat(str, "/floor.txt") ) )
+            return ret;
+        if(ret = __load( m_ceil , strcat(str, "/ceil.txt") )  )
+            return ret;
+        if(ret = __load( m_coll , strcat(str, "/coll.txt") )  )
+            return ret;
+        */
+        return ret;
     };
     
-    bool isLoaded() const { return repr != nullptr; };
+    bool isLoaded() const { 
+        return 
+            m_walls != nullptr &&
+            m_floor != nullptr && 
+            m_ceil  != nullptr && 
+            m_coll  != nullptr; 
+    };
 
     template<typename T>
-    char getTile(T x, T y) const { //xy with origin in BOT LEFT
+    char getCollision(T x, T y) const { //xy with origin in BOT LEFT
         translateXY(x, y);
         if( !_isWithin(x, y) )
             return OUT_OF_BOUNDS;
-        return _getTile(x, y);
+        return _getTile(m_coll, x, y);
     };
 
     template<typename T>
-    char getWallOrder(T x, T y) const {
-        char t = getTile(x, y);
-        if(t == OUT_OF_BOUNDS)
-            return t;
-        return t - WALL_FIRST;
-    }
+    char getWall(T x, T y) const { //xy with origin in BOT LEFT
+        translateXY(x, y);
+        if( !_isWithin(x, y) )
+            return OUT_OF_BOUNDS;
+        return _getTile(m_walls, x, y);
+    };
+
+    template<typename T>
+    char getFloor(T x, T y) const { //xy with origin in BOT LEFT
+        translateXY(x, y);
+        if( !_isWithin(x, y) )
+            return OUT_OF_BOUNDS;
+        return _getTile(m_floor, x, y);
+    };
+
+    template<typename T>
+    char getCeil(T x, T y) const { //xy with origin in BOT LEFT
+        translateXY(x, y);
+        if( !_isWithin(x, y) )
+            return OUT_OF_BOUNDS;
+        return _getTile(m_ceil, x, y);
+    };
 
     template<typename T>
     bool isWall(T x, T y) const {
-        char t = getTile(x, y);
-        return ( t >= WALL_FIRST && t <= WALL_LAST );
+        char t = getCollision(x, y);
+        return t == WALL;
     }
 
     bool isWithin(boundBox &bbx) const {
@@ -120,7 +143,7 @@ class Map {
     void translateXY(int   &x, int   &y) const { y = h-y-1; };
     void translateXY(float &x, float &y) const { y = (float)h-y; };
 
-    char _getTile(int x, int y) const {
+    char _getTile(const REPR_PTR &repr, int x, int y) const {
         return repr[w*y+x];
     };
 
@@ -153,10 +176,10 @@ class Map {
         std::cout << bbx.tlx << " " << bbx.tly << " "
                   << bbx.brx << " " << bbx.bry << std::endl;
 #endif
-        if( _getTile(bbx.brx, bbx.bry) != FLOOR
-         || _getTile(bbx.brx, bbx.tly) != FLOOR
-         || _getTile(bbx.tlx, bbx.bry) != FLOOR
-         || _getTile(bbx.tlx, bbx.tly) != FLOOR
+        if( _getTile(m_walls, bbx.brx, bbx.bry) != FLOOR
+         || _getTile(m_walls, bbx.brx, bbx.tly) != FLOOR
+         || _getTile(m_walls, bbx.tlx, bbx.bry) != FLOOR
+         || _getTile(m_walls, bbx.tlx, bbx.tly) != FLOOR
         )
             return false;
 #ifdef DEBUG
@@ -175,7 +198,39 @@ class Map {
             *yp = testy;
     };
 
-    std::unique_ptr<char[], void(*)(void*)> repr { nullptr, free } ;
+    int __load(REPR_PTR &repr, std::string path) {
+        std::ifstream f_map(path);
+        if( !f_map.good() ) {
+#ifdef DEBUG
+            std::cout << "Cannot open map in " << path << std::endl;
+#endif
+            return MAP_FILE_NOT_OPENED;
+        }
+        int map_w, map_h;
+        f_map >> map_w >> map_h;
+        int wh = map_w * map_h;
+        char *r = reinterpret_cast<char *>( calloc(wh+1, 1) );
+        int i = 0;
+        while( f_map && i < wh ) {
+            char c; f_map >> c;
+            r[i++] = c - 48; //ascii
+        }
+
+        if(i != wh || ( (w!=0 && map_w!=w) || (h!=0 && map_h!=h) )) {
+#ifdef DEBUG
+            std::cout << "Wrong dimensions of map " << path << std::endl;
+#endif
+            return MAP_WRONG_DIMENSIONS;
+        }
+        repr.reset(r); 
+        w = map_w; h = map_h;
+        return 0;
+    };
+
+    REPR_PTR m_walls { nullptr, free } ;
+    REPR_PTR m_floor { nullptr, free } ;
+    REPR_PTR m_ceil  { nullptr, free } ;
+    REPR_PTR m_coll  { nullptr, free } ;
 };
 
 
