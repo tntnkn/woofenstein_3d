@@ -3,12 +3,14 @@
 
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_surface.h>
 #include <cstdint>
 #include <iostream>
 #include <memory>
 
+#include "pixel.h"
 #include "errors.h"
 
 
@@ -50,6 +52,25 @@ class tileMap {
                       << std::endl;
 #endif
             return TILEMAP_WRONG_PIXEL_SIZE;
+        }
+
+        if(tm->format->format != REQUIRED_PIXEL_FORMAT) {
+            TILEMAP_PTR s {
+                SDL_CreateRGBSurface(
+                    0, tm->w, tm->h, 32, RMASK, GMASK, BMASK, AMASK),
+                SDL_FreeSurface
+            };
+            int r = SDL_ConvertPixels(
+                tm->w, tm->h, tm->format->format, tm->pixels, tm->pitch,
+                REQUIRED_PIXEL_FORMAT, s->pixels, tm->pitch);
+            if(0 != r) {
+#ifdef DEBUG
+                std::cout << "Cannot convert tilemap format " << path 
+                          << ". " << std::endl;
+#endif
+                return TILEMAP_CANNOT_CONVERT_PIXELS;
+            }
+            std::swap(tm, s);
         }
 
         uint32_t *p = __extractPixels( tm.get() );

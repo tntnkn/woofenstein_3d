@@ -4,7 +4,6 @@ if(MSVC)
 else()
 endif()
 
-add_compile_options("$<$<CONFIG:DEBUG>:-O0;>")
 add_compile_definitions("$<$<CONFIG:DEBUG>:DEBUG;>")
 
 project(

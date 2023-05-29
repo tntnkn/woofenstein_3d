@@ -15,9 +15,16 @@
 #define ASSETS "."
 #endif
 
+
+#ifdef BENCH_RENDER
+#include "timer.h"
+#endif
+
+
 int 
 main(int argc, char **argv)
 {
+
     err_code ret = initial_setup();
     if(ret != NO_ERROR)
         std::exit(ret);
@@ -45,6 +52,9 @@ main(int argc, char **argv)
 
     SDL_Event e; 
     bool canRun = true; 
+#ifdef BENCH_RENDER
+        timer tmr{};
+#endif
     while(canRun) {
         while( SDL_PollEvent(&e) ) {
             if(e.type == SDL_QUIT) {
@@ -54,10 +64,17 @@ main(int argc, char **argv)
                 player.handle( e.key.keysym.sym, map);
             }
         }
+#ifdef BENCH_RENDER
+        tmr.reset();
+#endif
         dc.clear();
         draw(sc, dc, tm);
         mm.draw(map, player, dc);
         dc.update();
+#ifdef BENCH_RENDER
+        tmr.timeit();
+        std::cout << "Render took " << tmr.getElapsedSC() << " seconds." << std::endl;
+#endif
     }
 
     std::exit(EXIT_SUCCESS);

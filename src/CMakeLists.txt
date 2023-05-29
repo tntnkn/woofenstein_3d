@@ -25,4 +25,6 @@ target_link_libraries(game
 target_compile_definitions(game 
   PRIVATE 
     ASSETS_PATH="${ASSETS_PATH}"
+    BENCH_RENDER
+    FAST_DDA
 )

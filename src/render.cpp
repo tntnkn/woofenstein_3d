@@ -7,6 +7,7 @@
 #include "miniMap.h"
 #include "linal.h"
 #include "tileMap.h"
+#include "guard.h"
 
 #include <cassert>
 
@@ -18,6 +19,10 @@ enum WALL_HIT {
 void
 draw(scene &sc, drawContext &dc, tileMap &tm)
 {
+    dc.lock();
+    auto unlocker = [&dc](){ dc.unlock(); };
+    auto unlock_guard = make_simple_guard(unlocker);
+
     Player  &p  = sc.p;
     Map     &map= sc.m;
     miniMap &mm = sc.mm;
@@ -36,54 +41,16 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
     float cdirl = h_fov_tan * pdirl;
     float cdirx = -pdiry/pdirl*cdirl, cdiry = pdirx/pdirl*cdirl;
 
-    SDL_Renderer *rend = dc.ren_ptr();
-
 #ifdef DEBUG
     mm.drawLine(p.x, p.y, p.x+pdirx, p.y+pdiry, 0x00, 0xFF, 0x00, map, dc); 
     mm.drawLine(p.x, p.y, p.x+cdirx, p.y+cdiry, 0xFF, 0x00, 0x00, map, dc); 
 #endif
 
-    /*
-    int tw = tm.m_tw;
-    int th = tm.m_th;
-    for(int y = 0; y < dc.SCREEN_HEIGHT/2; ++y) {
-        float rdirx0 = p.x - cdirx;
-        float rdiry0 = p.y - cdiry;
-        float rdirx1 = p.x + cdirx;
-        float rdiry1 = p.y + cdiry;
-
-        int smallZ = dc.SCREEN_HEIGHT/2 - y;
-        float bigZ   = 0.5 * dc.SCREEN_HEIGHT;
-
-        float row_dist = bigZ / smallZ;
-
-        float gridstepx = row_dist * (rdirx1-rdirx0) / dc.SCREEN_WIDTH;
-        float gridstepy = row_dist * (rdiry1-rdiry0) / dc.SCREEN_WIDTH;
-
-        float f_gridx = p.x + row_dist * rdirx0;
-        float f_gridy = p.y + row_dist * rdiry0;
-
-        for(int x = 0; x < dc.SCREEN_WIDTH; ++x) {
-            int i_gridx = f_gridx;
-            int i_gridy = f_gridy;
-            int tx = (int)(tw*(f_gridx-i_gridx)) & (tw-1); 
-            int ty = (int)(th*(f_gridy-i_gridy)) & (th-1); 
-
-            f_gridx += gridstepx;
-            f_gridy += gridstepy;
-            
-            struct colorRBG rgb = tm.getColorRGB(1, tx, ty);
-            SDL_SetRenderDrawColor(
-                rend, rgb.r, rgb.g, rgb.b, 255); 
-            SDL_RenderDrawPoint(rend, x, y);
-        }
-    }
-    */
-
     // Walls
     for(int i = 0; i < dc.SCREEN_WIDTH; i++) {
-        // Cofficient for camera vector, from -1 to 1.
-        float cc = 2.0*(float)i/(float)dc.SCREEN_WIDTH - 1.0; 
+        // Cofficient for camera vector, from 1 to -1.
+        // (cdir is 90d to the left of pdir).
+        float cc = -(2.0*(float)i/(float)dc.SCREEN_WIDTH - 1.0); 
         float rdirx = pdirx+cdirx*cc;
         float rdiry = pdiry+cdiry*cc;
 
@@ -181,7 +148,6 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
         };
         whc_n -= std::floor(whc_n); //TODO test just casting into int
 
-
         /* The problem of perpDist being < 1 and the line_h > SCREEN_HEIGHT
          * is handled further below. */
         int line_h = dc.SCREEN_HEIGHT / perpDist;
@@ -230,15 +196,18 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
             }
             line_start = 0;
         } 
-        if(line_end >= dc.SCREEN_HEIGHT) {
-            line_end = dc.SCREEN_HEIGHT-1;
+        if(line_end > dc.SCREEN_HEIGHT) {
+            line_end = dc.SCREEN_HEIGHT;
         }
         struct colorRBG rgb;
         for(int y = line_start; y < line_end; ++y) {
+            /*
             rgb = tm.getColorRGB(wall_t, tx, ty);
-            SDL_SetRenderDrawColor(
-                rend, rgb.r, rgb.g, rgb.b, 255); 
-            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y);
+            dc.setPixel(dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y,
+                        rgb.r, rgb.g, rgb.b, 255); 
+            */
+            dc.setPixel(i, dc.SCREEN_HEIGHT-1-y,
+                        tm.getColor(wall_t, tx, ty) );
             accum += d;
             if(accum >= threshold) {
                 ty += y_inc;
@@ -281,19 +250,26 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
             int ty = (int)(th * (f_tiley - tile_y) ) & (th-1); 
 
             int floor_t = map.getFloor(tile_x, tile_y);
+            /*
             rgb = tm.getColorRGB(floor_t, tx, ty);
-            SDL_SetRenderDrawColor(
-                rend, rgb.r, rgb.g, rgb.b, 255); 
-            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y);
+            dc.setPixel(dc.SCREEN_WIDTH-i, dc.SCREEN_HEIGHT-y,
+                        rgb.r, rgb.g, rgb.b, 255); 
+            */
+            dc.setPixel(i, dc.SCREEN_HEIGHT-y-1,
+                        tm.getColor(floor_t, tx, ty) );
 
             int ceil_t  = map.getCeil(tile_x, tile_y);
+            /*
             rgb = tm.getColorRGB(ceil_t, tx, ty);
-            SDL_SetRenderDrawColor(
-                rend, rgb.r, rgb.g, rgb.b, 255); 
-            SDL_RenderDrawPoint(rend, dc.SCREEN_WIDTH-i, y);
+            dc.setPixel(dc.SCREEN_WIDTH-i, y,
+                        rgb.r, rgb.g, rgb.b, 255); 
+            */
+            dc.setPixel(i, y,
+                        tm.getColor(ceil_t, tx, ty) );
         }
 
 #else
+        SDL_Renderer *rend = dc.ren_ptr();
         SDL_SetRenderDrawColor(rend, 0x00, 0x00, 0xFF, 255); 
         SDL_RenderDrawLine(rend, dc.SCREEN_WIDTH-i, line_b, dc.SCREEN_WIDTH-i, line_t);
 #endif
@@ -305,5 +281,6 @@ draw(scene &sc, drawContext &dc, tileMap &tm)
                     p.x+rdirx*perpDist, p.y+rdiry*perpDist, 
                     mm_ray_r, 0xFF, 0xFF, map, dc); 
 #endif
+
     }
 }
