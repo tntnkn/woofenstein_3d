@@ -7,8 +7,15 @@
 #include "tileMap.h"
 
 
+struct drawBuffers {
+    float              *z; 
+    std::vector<float> &things_dst;
+    std::vector<int>   &things_ids;
+};
+
+
 void
-draw(scene &sc, drawContext &dc, tileMap &tm);
+draw(scene &sc, drawContext &dc, tileMap &tm, drawBuffers buff);
 
 
 #endif

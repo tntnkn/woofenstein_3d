@@ -19,10 +19,11 @@
 #define TILEMAP_PTR std::unique_ptr<SDL_Surface, void(*)(SDL_Surface*)> 
 
 
-struct colorRBG {
+struct colorRBGA {
     uint8_t r;
     uint8_t g;
     uint8_t b;
+    uint8_t a;
 };
 
 
@@ -32,8 +33,12 @@ class tileMap {
     const int m_th = DEFAULT_TH;
     const int m_td = DEFAULT_TW * DEFAULT_TH;
 
-    tileMap()  {}
-    ~tileMap() { m_pixels = nullptr; }
+    tileMap() {}
+    tileMap(uint32_t transparent_color) : 
+        m_transparent_color_is_set(true),
+        // transparent_color is accepted as RGBA color and translated in ctor!
+        m_transparent_color( RGBA_TO_REQUIRED(transparent_color) ) {};
+    ~tileMap() { m_pixels = nullptr; m_no_textures = 0; }
 
     err_code load(const char *path) {
         TILEMAP_PTR tm { IMG_Load(path), SDL_FreeSurface };
@@ -73,6 +78,25 @@ class tileMap {
             std::swap(tm, s);
         }
 
+        if(m_transparent_color_is_set) {
+            if(0 != SDL_SetColorKey(tm.get(), SDL_TRUE, m_transparent_color)) {
+#ifdef DEBUG
+                std::cout << "Cannot set color key for texture " << path 
+                          << ". " << std::endl;
+#endif
+                return TILEMAP_CANNOT_SET_COLOR_KEY;
+            }
+
+            TILEMAP_PTR s {
+                SDL_CreateRGBSurface(
+                    0, tm->w, tm->h, 32, RMASK, GMASK, BMASK, AMASK),
+                SDL_FreeSurface
+            };
+            SDL_BlitSurface(tm.get(), NULL, s.get(), NULL);
+
+            std::swap(tm, s);
+        }
+
         uint32_t *p = __extractPixels( tm.get() );
         if(!p) {
 #ifdef DEBUG
@@ -85,12 +109,15 @@ class tileMap {
         R_mask = tm->format->Rmask;
         G_mask = tm->format->Gmask;
         B_mask = tm->format->Bmask;
+        A_mask = tm->format->Amask;
         R_loss = tm->format->Rloss;
         G_loss = tm->format->Gloss;
         B_loss = tm->format->Bloss;
+        A_loss = tm->format->Aloss;
         Rshift = tm->format->Rshift;
         Gshift = tm->format->Gshift;
         Bshift = tm->format->Bshift;
+        Ashift = tm->format->Ashift;
 
         m_no_textures = (tm->w/m_tw) * (tm->h/m_th);
         m_pixels.reset(p);
@@ -102,6 +129,7 @@ class tileMap {
     uint8_t get_r(uint32_t c) { return (((c&R_mask) >> Rshift) << R_loss); }
     uint8_t get_g(uint32_t c) { return (((c&G_mask) >> Gshift) << G_loss); }
     uint8_t get_b(uint32_t c) { return (((c&B_mask) >> Bshift) << B_loss); }
+    uint8_t get_a(uint32_t c) { return (((c&A_mask) >> Ashift) << A_loss); }
 
     uint32_t getColor(int t_no, int x, int y) {
         if(t_no >= m_no_textures || x >= m_tw || y >= m_th) {
@@ -114,12 +142,13 @@ class tileMap {
         return m_pixels[ m_td*t_no + (m_tw*y+x) ];
     }
 
-    colorRBG getColorRGB(int t_no, int x, int y) {
+    colorRBGA getColorRGBA(int t_no, int x, int y) {
         int c = getColor(t_no, x, y);
         return {
             get_r(c),
             get_g(c),
             get_b(c),
+            get_a(c),
         };
     }
 
@@ -161,12 +190,18 @@ class tileMap {
     uint32_t R_mask;
     uint32_t G_mask;
     uint32_t B_mask;
+    uint32_t A_mask;
     uint32_t R_loss;
     uint32_t G_loss;
     uint32_t B_loss;
+    uint32_t A_loss;
     uint32_t Rshift;
     uint32_t Gshift;
     uint32_t Bshift;
+    uint32_t Ashift;
+
+    uint32_t m_transparent_color = 0;
+    bool m_transparent_color_is_set = false;
 };
 
 

@@ -8,7 +8,8 @@
 
 struct scene {
     Map     &m;
-    Player  &p;
+    Thing   &p;
+    Things  &things;
     miniMap &mm;
 };
 

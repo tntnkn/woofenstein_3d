@@ -120,7 +120,19 @@ class drawContext {
         }
 
         void setPixel(int x, int y, uint32_t color) {
-            m_screen_pixels[SCREEN_WIDTH*y+x] = color; 
+            uint32_t prev_col = m_screen_pixels[SCREEN_WIDTH*y+x];
+            m_screen_pixels[SCREEN_WIDTH*y+x] = blend(prev_col, color); 
+        }
+
+        uint32_t blend(uint32_t orig_col, uint32_t new_col) {
+            //return new_col;
+            static const uint32_t RBMASK = RMASK | BMASK;
+            static const uint32_t AGMASK = AMASK | GMASK;
+            uint32_t a  = GET_A(new_col);
+            uint32_t na = 255 - a;
+            uint32_t rb = ((na * (orig_col & RBMASK)) + (a * (new_col & RBMASK))) >> 8;
+            uint32_t ag = (na * ((orig_col & AGMASK) >> 8)) + (a * (ONEALPHA | ((new_col & GMASK) >> 8)));
+            return ((rb & RBMASK) | (ag & AGMASK));
         }
 
         SDL_Window*   win_ptr() { return WINDOW; }; 

@@ -20,7 +20,7 @@ class miniMap {
     miniMap(int s) : m_scale(s) {};
     ~miniMap() {};
 
-    void draw(Map &m, Player &p, drawContext &dc) {
+    void draw(Map &m, Thing &p, drawContext &dc) {
         SDL_BlendMode cb;
         SDL_Renderer *rend = dc.ren_ptr();
         SDL_GetRenderDrawBlendMode(rend, &cb);
@@ -60,7 +60,7 @@ class miniMap {
         }
     }
 
-    void draw(Player &p, drawContext &dc, int mw, int mh) {
+    void draw(Thing &p, drawContext &dc, int mw, int mh) {
         SDL_Renderer *rend = dc.ren_ptr();
         /* 
          * Entity's y is inverted as SDL's origin is top left.

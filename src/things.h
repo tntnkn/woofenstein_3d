@@ -5,12 +5,14 @@
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <memory>
+#include <vector>
 #include <iostream>
 #include <fstream>
 #include <stdlib.h>
 #include <cctype>
 
 #include "drawContext.h"
+#include "tileMap.h"
 #include "errors.h"
 #include "pi.h"
 
@@ -55,18 +57,6 @@ class Map {
             return ret;
         if(ret = __load( m_coll , str + std::string("/coll.txt" ) ) )
             return ret;
-        //char *str = (char*)calloc( strlen(path) + 6, 1);
-        //strcpy(str, path);
-        /*
-        if(ret = __load( m_walls, strcat(str, "/walls.txt") ) )
-            return ret;
-        if(ret = __load( m_floor, strcat(str, "/floor.txt") ) )
-            return ret;
-        if(ret = __load( m_ceil , strcat(str, "/ceil.txt") )  )
-            return ret;
-        if(ret = __load( m_coll , strcat(str, "/coll.txt") )  )
-            return ret;
-        */
         return ret;
     };
     
@@ -234,18 +224,29 @@ class Map {
 };
 
 
-class Player {
+class Thing {
   public:
-    //x and y of player's center 
+    //x and y of thing's center 
     float x;
     float y;
     float v  = 0.1;
     float w  = 0.2;
     float h  = 0.2;
     float a  = PI/2;
-    
-    Player(float x, float y) : x(x), y(y) {}; 
-    ~Player() {};
+    tileMap *sprite = NULL; 
+    int     t_no;
+
+    Thing(float x, float y) : Thing(x, y, NULL, -1) {}; 
+    Thing(float x, float y, tileMap *s, int t_no) 
+        : x(x), y(y), sprite(s), t_no(t_no) {};
+
+    Thing(Thing &&other) noexcept = default;
+
+    Thing(const Thing &other)           = delete;
+    Thing &operator=(Thing &other)      = delete;
+    Thing &operator=(Thing &&other)     = delete;
+
+    ~Thing() {};
 
     void handle(SDL_Keycode k_code, Map &map) {
         float newx = x;
@@ -274,9 +275,11 @@ class Player {
                 return;
         }
         
-        if(!moving)
-            return;
+        if(moving)
+            moveTo(newx, newy, map);
+    }
 
+    bool moveTo(float newx, float newy, Map &map) {
         float halfw= w/2;
         float halfh= h/2;
         struct boundBox bbx = {
@@ -285,11 +288,14 @@ class Player {
             newx+halfw, 
             newy+halfh,
         };
-        if( map.canMoveTo(newx, newy, bbx) ) {
-            x = newx; y = newy;
-        }
+        if( !map.canMoveTo(newx, newy, bbx) )
+            return 0;
+        x = newx; y = newy;
+        return 1;
     }
 };
+
+using Things = std::vector<Thing>;
 
 
 #endif
